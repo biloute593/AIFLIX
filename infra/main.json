@@ -1,0 +1,223 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.38.33.27573",
+      "templateHash": "17755570452587807257"
+    }
+  },
+  "parameters": {
+    "environmentName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the environment"
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Location for all resources."
+      }
+    }
+  },
+  "variables": {
+    "resourceToken": "[uniqueString(subscription().id, resourceGroup().id, parameters('location'), parameters('environmentName'))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.DocumentDB/databaseAccounts",
+      "apiVersion": "2023-04-15",
+      "name": "[format('cosmos{0}', variables('resourceToken'))]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "databaseAccountOfferType": "Standard",
+        "locations": [
+          {
+            "locationName": "[parameters('location')]",
+            "failoverPriority": 0,
+            "isZoneRedundant": false
+          }
+        ],
+        "capabilities": [
+          {
+            "name": "EnableMongo"
+          }
+        ],
+        "enableAutomaticFailover": false,
+        "enableMultipleWriteLocations": false,
+        "enablePartitionMerge": false,
+        "isVirtualNetworkFilterEnabled": false,
+        "virtualNetworkRules": [],
+        "ipRules": [],
+        "consistencyPolicy": {
+          "defaultConsistencyLevel": "Session",
+          "maxIntervalInSeconds": 5,
+          "maxStalenessPrefix": 100
+        },
+        "enableFreeTier": false,
+        "enableAnalyticalStorage": false,
+        "createMode": "Default",
+        "backupPolicy": {
+          "type": "Periodic",
+          "periodicModeProperties": {
+            "backupIntervalInMinutes": 240,
+            "backupRetentionIntervalInHours": 8,
+            "backupStorageRedundancy": "Local"
+          }
+        },
+        "cors": [],
+        "networkAclBypass": "None",
+        "networkAclBypassResourceIds": []
+      },
+      "tags": {}
+    },
+    {
+      "type": "Microsoft.DocumentDB/databaseAccounts/mongodbDatabases",
+      "apiVersion": "2023-04-15",
+      "name": "[format('{0}/{1}', format('cosmos{0}', variables('resourceToken')), 'aiflix')]",
+      "properties": {
+        "resource": {
+          "id": "aiflix"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.DocumentDB/databaseAccounts', format('cosmos{0}', variables('resourceToken')))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "apiVersion": "2023-01-01",
+      "name": "[format('st{0}', variables('resourceToken'))]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "Standard_LRS"
+      },
+      "kind": "StorageV2",
+      "properties": {
+        "allowBlobPublicAccess": false,
+        "allowSharedKeyAccess": false,
+        "minimumTlsVersion": "TLS1_2",
+        "supportsHttpsTrafficOnly": true,
+        "encryption": {
+          "services": {
+            "blob": {
+              "enabled": true
+            },
+            "file": {
+              "enabled": true
+            }
+          },
+          "keySource": "Microsoft.Storage"
+        },
+        "accessTier": "Hot",
+        "networkAcls": {
+          "bypass": "AzureServices",
+          "virtualNetworkRules": [],
+          "ipRules": [],
+          "defaultAction": "Allow"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/blobServices",
+      "apiVersion": "2023-01-01",
+      "name": "[format('{0}/{1}', format('st{0}', variables('resourceToken')), 'default')]",
+      "properties": {},
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', format('st{0}', variables('resourceToken')))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+      "apiVersion": "2023-01-01",
+      "name": "[format('{0}/{1}/{2}', format('st{0}', variables('resourceToken')), 'default', 'videos')]",
+      "properties": {
+        "publicAccess": "None"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts/blobServices', format('st{0}', variables('resourceToken')), 'default')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Web/serverfarms",
+      "apiVersion": "2022-09-01",
+      "name": "[format('plan{0}', variables('resourceToken'))]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "B1",
+        "tier": "Basic"
+      },
+      "properties": {
+        "reserved": true
+      }
+    },
+    {
+      "type": "Microsoft.Web/sites",
+      "apiVersion": "2022-09-01",
+      "name": "[format('app{0}', variables('resourceToken'))]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', format('plan{0}', variables('resourceToken')))]",
+        "siteConfig": {
+          "linuxFxVersion": "NODE|18-lts",
+          "appSettings": [
+            {
+              "name": "AZURE_COSMOS_ENDPOINT",
+              "value": "[reference(resourceId('Microsoft.DocumentDB/databaseAccounts', format('cosmos{0}', variables('resourceToken'))), '2023-04-15').documentEndpoint]"
+            },
+            {
+              "name": "AZURE_COSMOS_KEY",
+              "value": "[listKeys(resourceId('Microsoft.DocumentDB/databaseAccounts', format('cosmos{0}', variables('resourceToken'))), '2023-04-15').primaryMasterKey]"
+            },
+            {
+              "name": "AZURE_COSMOS_DATABASE",
+              "value": "aiflix"
+            },
+            {
+              "name": "AZURE_STORAGE_ACCOUNT",
+              "value": "[format('st{0}', variables('resourceToken'))]"
+            },
+            {
+              "name": "AZURE_STORAGE_KEY",
+              "value": "[listKeys(resourceId('Microsoft.Storage/storageAccounts', format('st{0}', variables('resourceToken'))), '2023-01-01').keys[0].value]"
+            },
+            {
+              "name": "AZURE_STORAGE_CONTAINER",
+              "value": "videos"
+            }
+          ]
+        },
+        "httpsOnly": true
+      },
+      "tags": {
+        "azd-service-name": "aiflix"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/serverfarms', format('plan{0}', variables('resourceToken')))]",
+        "[resourceId('Microsoft.DocumentDB/databaseAccounts', format('cosmos{0}', variables('resourceToken')))]",
+        "[resourceId('Microsoft.Storage/storageAccounts', format('st{0}', variables('resourceToken')))]"
+      ]
+    }
+  ],
+  "outputs": {
+    "AZURE_COSMOS_ENDPOINT": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.DocumentDB/databaseAccounts', format('cosmos{0}', variables('resourceToken'))), '2023-04-15').documentEndpoint]"
+    },
+    "AZURE_COSMOS_KEY": {
+      "type": "string",
+      "value": "[listKeys(resourceId('Microsoft.DocumentDB/databaseAccounts', format('cosmos{0}', variables('resourceToken'))), '2023-04-15').primaryMasterKey]"
+    },
+    "AZURE_STORAGE_ACCOUNT": {
+      "type": "string",
+      "value": "[format('st{0}', variables('resourceToken'))]"
+    },
+    "AZURE_STORAGE_KEY": {
+      "type": "string",
+      "value": "[listKeys(resourceId('Microsoft.Storage/storageAccounts', format('st{0}', variables('resourceToken'))), '2023-01-01').keys[0].value]"
+    }
+  }
+}

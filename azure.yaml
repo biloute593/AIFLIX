@@ -1,0 +1,8 @@
+name: aiflix
+metadata:
+  template: aiflix@0.0.1
+services:
+  aiflix:
+    project: .
+    language: js
+    host: appservice
