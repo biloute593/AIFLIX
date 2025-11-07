@@ -1,17 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { contentsContainer, containerClient } from '@/lib/azure'
+import { getContentsContainer, getContainerClient } from '@/lib/azure'
+import { getUserFromRequest } from '@/lib/auth'
 
 export async function POST(request: NextRequest) {
+  // Prevent execution during build time
+  if (!process.env.AZURE_COSMOS_CONNECTION_STRING) {
+    return NextResponse.json({ error: 'Service temporarily unavailable' }, { status: 503 })
+  }
+
   try {
+    // Verify JWT token
+    const user = getUserFromRequest(request)
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const formData = await request.formData()
     const title = formData.get('title') as string
     const description = formData.get('description') as string
     const type = formData.get('type') as string
     const file = formData.get('file') as File
-    const userId = formData.get('userId') as string
 
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
+    }
+
+    const containerClient = getContainerClient()
+    if (!containerClient) {
+      return NextResponse.json({ error: 'Storage connection failed' }, { status: 500 })
     }
 
     // Upload to Azure Blob Storage
@@ -29,6 +45,11 @@ export async function POST(request: NextRequest) {
 
     const videoUrl = blockBlobClient.url
 
+    const contentsContainer = getContentsContainer()
+    if (!contentsContainer) {
+      return NextResponse.json({ error: 'Database connection failed' }, { status: 500 })
+    }
+
     // Save to Cosmos DB
     const content = {
       id: Date.now().toString(),
@@ -36,7 +57,7 @@ export async function POST(request: NextRequest) {
       description,
       type,
       videoUrl,
-      userId,
+      userId: user.userId,
       createdAt: new Date().toISOString()
     }
 

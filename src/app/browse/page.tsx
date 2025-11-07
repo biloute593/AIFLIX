@@ -1,3 +1,5 @@
+'use client'
+
 import ContentCard from '@/components/ContentCard'
 import { useEffect, useState } from 'react'
 

@@ -1,9 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { usersContainer } from '@/lib/azure'
+import { getUsersContainer } from '@/lib/azure'
+import bcrypt from 'bcryptjs'
 
 export async function POST(request: NextRequest) {
+  // Skip database operations during build time
+  if (!process.env.AZURE_COSMOS_CONNECTION_STRING) {
+    return NextResponse.json({ error: 'Service unavailable during build' }, { status: 503 })
+  }
+
   try {
     const { name, email, password } = await request.json()
+
+    const usersContainer = getUsersContainer()
+    if (!usersContainer) {
+      return NextResponse.json({ error: 'Database connection failed' }, { status: 500 })
+    }
 
     // Check if user exists
     const { resources: existingUsers } = await usersContainer.items
@@ -17,12 +28,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User already exists' }, { status: 400 })
     }
 
+    // Hash password
+    const saltRounds = 10
+    const hashedPassword = await bcrypt.hash(password, saltRounds)
+
     // Create user
     const user = {
       id: Date.now().toString(),
       name,
       email,
-      password, // In production, hash the password
+      password: hashedPassword,
       createdAt: new Date().toISOString()
     }
 

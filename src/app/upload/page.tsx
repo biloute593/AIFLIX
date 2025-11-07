@@ -1,19 +1,18 @@
 'use client'
 
 import { useState } from 'react'
+import { useAuth } from '@/contexts/AuthContext'
 
 export default function Upload() {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [type, setType] = useState('movie')
   const [file, setFile] = useState<File | null>(null)
+  const { user, getAuthHeaders } = useAuth()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!file) return
-
-    const session = JSON.parse(localStorage.getItem('session') || '{}')
-    if (!session.userId) {
+    if (!file || !user) {
       alert('Veuillez vous connecter')
       return
     }
@@ -23,11 +22,11 @@ export default function Upload() {
     formData.append('description', description)
     formData.append('type', type)
     formData.append('file', file)
-    formData.append('userId', session.userId)
 
     try {
       const response = await fetch('/api/upload', {
         method: 'POST',
+        headers: getAuthHeaders(),
         body: formData,
       })
 
@@ -42,6 +41,17 @@ export default function Upload() {
       console.error('Upload error:', error)
       alert('Erreur lors de l\'upload')
     }
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-black text-white p-8 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Accès refusé</h1>
+          <p>Veuillez vous connecter pour uploader du contenu.</p>
+        </div>
+      </div>
+    )
   }
 
   return (

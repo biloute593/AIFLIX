@@ -1,14 +1,16 @@
 @description('Name of the environment')
-param environmentName string
+param environmentName string = 'aiflix'
 
 @description('Location for all resources.')
 param location string = resourceGroup().location
 
 var resourceToken = uniqueString(subscription().id, resourceGroup().id, location, environmentName)
 
-resource cosmosDb 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' = {
+// Deploy Cosmos DB with MongoDB API
+resource cosmosDb 'Microsoft.DocumentDB/databaseAccounts@2024-08-15' = {
   name: 'cosmos${resourceToken}'
   location: location
+  kind: 'MongoDB'
   properties: {
     databaseAccountOfferType: 'Standard'
     locations: [
@@ -52,7 +54,8 @@ resource cosmosDb 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' = {
   tags: {}
 }
 
-resource cosmosDbDatabase 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases@2023-04-15' = {
+// Create AIFLIX database in Cosmos DB
+resource cosmosDbDatabase 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases@2024-08-15' = {
   parent: cosmosDb
   name: 'aiflix'
   properties: {
@@ -62,7 +65,8 @@ resource cosmosDbDatabase 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabase
   }
 }
 
-resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
+// Deploy Storage Account
+resource storageAccount 'Microsoft.Storage/storageAccounts@2024-01-01' = {
   name: 'st${resourceToken}'
   location: location
   sku: {
@@ -71,7 +75,7 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
   kind: 'StorageV2'
   properties: {
     allowBlobPublicAccess: false
-    allowSharedKeyAccess: false
+    allowSharedKeyAccess: true
     minimumTlsVersion: 'TLS1_2'
     supportsHttpsTrafficOnly: true
     encryption: {
@@ -95,13 +99,14 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
   }
 }
 
-resource blobService 'Microsoft.Storage/storageAccounts/blobServices@2023-01-01' = {
+// Create blob service and container
+resource blobService 'Microsoft.Storage/storageAccounts/blobServices@2024-01-01' = {
   parent: storageAccount
   name: 'default'
   properties: {}
 }
 
-resource blobContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-01-01' = {
+resource blobContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2024-01-01' = {
   parent: blobService
   name: 'videos'
   properties: {
@@ -109,60 +114,12 @@ resource blobContainer 'Microsoft.Storage/storageAccounts/blobServices/container
   }
 }
 
-resource appServicePlan 'Microsoft.Web/serverfarms@2022-09-01' = {
-  name: 'plan${resourceToken}'
-  location: location
-  sku: {
-    name: 'B1'
-    tier: 'Basic'
-  }
-  properties: {
-    reserved: true
-  }
-}
-
-resource webApp 'Microsoft.Web/sites@2022-09-01' = {
-  name: 'app${resourceToken}'
-  location: location
-  properties: {
-    serverFarmId: appServicePlan.id
-    siteConfig: {
-      linuxFxVersion: 'NODE|18-lts'
-      appSettings: [
-        {
-          name: 'AZURE_COSMOS_ENDPOINT'
-          value: cosmosDb.properties.documentEndpoint
-        }
-        {
-          name: 'AZURE_COSMOS_KEY'
-          value: cosmosDb.listKeys().primaryMasterKey
-        }
-        {
-          name: 'AZURE_COSMOS_DATABASE'
-          value: 'aiflix'
-        }
-        {
-          name: 'AZURE_STORAGE_ACCOUNT'
-          value: storageAccount.name
-        }
-        {
-          name: 'AZURE_STORAGE_KEY'
-          value: storageAccount.listKeys().keys[0].value
-        }
-        {
-          name: 'AZURE_STORAGE_CONTAINER'
-          value: 'videos'
-        }
-      ]
-    }
-    httpsOnly: true
-  }
-  tags: {
-    'azd-service-name': 'aiflix'
-  }
-}
-
+// Outputs for Vercel environment variables
+output AZURE_COSMOS_CONNECTION_STRING string = cosmosDb.properties.documentEndpoint
 output AZURE_COSMOS_ENDPOINT string = cosmosDb.properties.documentEndpoint
 output AZURE_COSMOS_KEY string = cosmosDb.listKeys().primaryMasterKey
-output AZURE_STORAGE_ACCOUNT string = storageAccount.name
-output AZURE_STORAGE_KEY string = storageAccount.listKeys().keys[0].value
+output AZURE_COSMOS_DATABASE string = 'aiflix'
+output AZURE_STORAGE_ACCOUNT_NAME string = storageAccount.name
+output AZURE_STORAGE_ACCOUNT_KEY string = storageAccount.listKeys().keys[0].value
+output AZURE_STORAGE_CONNECTION_STRING string = 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};AccountKey=${storageAccount.listKeys().keys[0].value};EndpointSuffix=core.windows.net'
+output AZURE_STORAGE_CONTAINER string = 'videos'
