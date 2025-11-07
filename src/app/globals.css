@@ -1,3 +1,17 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Fix deprecated CSS properties */
+* {
+  -webkit-text-size-adjust: none !important;
+  text-size-adjust: none !important;
+}
+
+/* Override any webkit properties that cause console warnings */
+input, textarea, select, button {
+  -webkit-appearance: none;
+  appearance: none;
+  -webkit-text-size-adjust: none !important;
+  text-size-adjust: none !important;
+}
