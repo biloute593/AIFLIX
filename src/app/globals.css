@@ -2,16 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Fix deprecated CSS properties */
+/* Modern CSS fixes for mobile rendering */
 * {
-  -webkit-text-size-adjust: none !important;
-  text-size-adjust: none !important;
+  text-size-adjust: none;
 }
 
-/* Override any webkit properties that cause console warnings */
+/* Reset form elements for consistent appearance */
 input, textarea, select, button {
-  -webkit-appearance: none;
   appearance: none;
-  -webkit-text-size-adjust: none !important;
-  text-size-adjust: none !important;
+  text-size-adjust: none;
 }

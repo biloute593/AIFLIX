@@ -9,12 +9,13 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@azure/cosmos": "^4.0.0",
+    "@azure/cosmos": "^4.7.0",
     "@azure/identity": "^4.0.0",
     "@azure/storage-blob": "^12.17.0",
     "autoprefixer": "^10.4.16",
-  "bcryptjs": "^2.4.3",
+    "bcryptjs": "^2.4.3",
     "jsonwebtoken": "^9.0.2",
+    "mongodb": "^4.17.2",
     "next": "14.0.0",
     "node-fetch": "^2.7.0",
     "postcss": "^8.4.32",

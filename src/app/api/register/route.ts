@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getUsersContainer } from '@/lib/azure'
+import { getUsersCollection } from '@/lib/azure'
 import bcrypt from 'bcryptjs'
 
 export async function POST(request: NextRequest) {
@@ -9,22 +9,15 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    console.log('Parsing request JSON...')
     const { name, email, password } = await request.json()
+    console.log('JSON parsed successfully:', { name, email, password: '***' })
 
-    const usersContainer = getUsersContainer()
-    if (!usersContainer) {
-      return NextResponse.json({ error: 'Database connection failed' }, { status: 500 })
-    }
+    const usersCollection = await getUsersCollection()
 
     // Check if user exists
-    const { resources: existingUsers } = await usersContainer.items
-      .query({
-        query: 'SELECT * FROM c WHERE c.email = @email',
-        parameters: [{ name: '@email', value: email }]
-      })
-      .fetchAll()
-
-    if (existingUsers.length > 0) {
+    const existingUser = await usersCollection.findOne({ email })
+    if (existingUser) {
       return NextResponse.json({ error: 'User already exists' }, { status: 400 })
     }
 
@@ -34,16 +27,15 @@ export async function POST(request: NextRequest) {
 
     // Create user
     const user = {
-      id: Date.now().toString(),
       name,
       email,
       password: hashedPassword,
       createdAt: new Date().toISOString()
     }
 
-    await usersContainer.items.create(user)
+    const result = await usersCollection.insertOne(user)
 
-    return NextResponse.json({ message: 'User created successfully', userId: user.id }, { status: 201 })
+    return NextResponse.json({ message: 'User created successfully', userId: result.insertedId }, { status: 201 })
   } catch (error) {
     console.error('Registration error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

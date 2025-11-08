@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getContentsContainer, getContainerClient } from '@/lib/azure'
+import { getContentsCollection, getContainerClient } from '@/lib/azure'
 import { getUserFromRequest } from '@/lib/auth'
 
 export async function POST(request: NextRequest) {
@@ -45,14 +45,10 @@ export async function POST(request: NextRequest) {
 
     const videoUrl = blockBlobClient.url
 
-    const contentsContainer = getContentsContainer()
-    if (!contentsContainer) {
-      return NextResponse.json({ error: 'Database connection failed' }, { status: 500 })
-    }
+    const contentsCollection = await getContentsCollection()
 
-    // Save to Cosmos DB
+    // Save to MongoDB
     const content = {
-      id: Date.now().toString(),
       title,
       description,
       type,
@@ -61,9 +57,9 @@ export async function POST(request: NextRequest) {
       createdAt: new Date().toISOString()
     }
 
-    await contentsContainer.items.create(content)
+    const result = await contentsCollection.insertOne(content)
 
-    return NextResponse.json({ message: 'Content uploaded successfully', content }, { status: 201 })
+    return NextResponse.json({ message: 'Content uploaded successfully', contentId: result.insertedId }, { status: 201 })
   } catch (error) {
     console.error('Upload error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

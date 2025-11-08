@@ -1,49 +1,81 @@
-import { CosmosClient } from '@azure/cosmos'
+import { MongoClient, Db, Collection } from 'mongodb'
 import { BlobServiceClient } from '@azure/storage-blob'
 
-// Cosmos DB - Lazy initialization
-let cosmosClient: CosmosClient | null = null
-let database: any = null
-let _usersContainer: any = null
-let _contentsContainer: any = null
+// MongoDB - Lazy initialization
+let mongoClient: MongoClient | null = null
+let database: Db | null = null
+let _usersCollection: Collection | null = null
+let _contentsCollection: Collection | null = null
 
-function getCosmosClient() {
-  if (!cosmosClient && process.env.AZURE_COSMOS_CONNECTION_STRING) {
-    // Extract endpoint and key from connection string
-    // Format: AccountEndpoint=https://xxx.documents.azure.com:443/;AccountKey=yyy;
+async function getMongoClient(): Promise<MongoClient> {
+  if (!mongoClient) {
+    // For Cosmos DB MongoDB API, we need to construct the MongoDB connection string
+    // from the SQL API connection string format
     const connectionString = process.env.AZURE_COSMOS_CONNECTION_STRING
-    const endpointMatch = connectionString.match(/AccountEndpoint=([^;]+)/)
-    const keyMatch = connectionString.match(/AccountKey=([^;]+)/)
 
-    if (endpointMatch && keyMatch) {
-      cosmosClient = new CosmosClient({
-        endpoint: endpointMatch[1],
-        key: keyMatch[1]
-      })
+    if (connectionString) {
+      // Parse SQL API connection string to extract components
+      const endpointMatch = connectionString.match(/AccountEndpoint=([^;]+)/)
+      const keyMatch = connectionString.match(/AccountKey=([^;]+)/)
+
+      if (endpointMatch && keyMatch) {
+        const accountName = endpointMatch[1].replace('https://', '').replace('.documents.azure.com', '').replace(/:\d+\/?$/, '')
+        const accountKey = keyMatch[1]
+
+        // For Cosmos DB MongoDB API, use the key directly (same key works for both APIs)
+        const mongoConnectionString = `mongodb://${accountName}:${accountKey}@${accountName}.mongo.cosmos.azure.com:10255/aiflix?ssl=true&replicaSet=globaldb&retrywrites=false&maxIdleTimeMS=120000`
+
+        console.log('Account name:', accountName)
+        console.log('Using direct key for MongoDB API')
+
+        mongoClient = new MongoClient(mongoConnectionString, {
+          // Options for Cosmos DB MongoDB API compatibility
+          maxPoolSize: 10,
+          serverSelectionTimeoutMS: 5000,
+          socketTimeoutMS: 45000,
+          minPoolSize: 0,
+          maxIdleTimeMS: 30000,
+        })
+
+        await mongoClient.connect()
+      } else {
+        throw new Error('Invalid connection string format')
+      }
+    } else {
+      throw new Error('Missing Cosmos DB connection string')
     }
   }
-  return cosmosClient
+  if (!mongoClient) {
+    throw new Error('Failed to connect to MongoDB')
+  }
+  return mongoClient
 }
 
-function getDatabase() {
-  if (!database && getCosmosClient() && process.env.AZURE_COSMOS_DATABASE) {
-    database = getCosmosClient()!.database(process.env.AZURE_COSMOS_DATABASE)
+async function getDatabase(): Promise<Db> {
+  if (!database && process.env.AZURE_COSMOS_DATABASE) {
+    const client = await getMongoClient()
+    database = client.db(process.env.AZURE_COSMOS_DATABASE)
+  }
+  if (!database) {
+    throw new Error('Failed to get database')
   }
   return database
 }
 
-export function getUsersContainer() {
-  if (!_usersContainer && getDatabase()) {
-    _usersContainer = getDatabase().container('users')
+export async function getUsersCollection(): Promise<Collection> {
+  if (!_usersCollection) {
+    const db = await getDatabase()
+    _usersCollection = db.collection('users')
   }
-  return _usersContainer
+  return _usersCollection
 }
 
-export function getContentsContainer() {
-  if (!_contentsContainer && getDatabase()) {
-    _contentsContainer = getDatabase().container('contents')
+export async function getContentsCollection(): Promise<Collection> {
+  if (!_contentsCollection) {
+    const db = await getDatabase()
+    _contentsCollection = db.collection('contents')
   }
-  return _contentsContainer
+  return _contentsCollection
 }
 
 // Blob Storage - Lazy initialization

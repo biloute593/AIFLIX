@@ -31,13 +31,6 @@
       "static/chunks/122-62ac52ecf62d0edb.js",
       "static/chunks/app/login/page-09b8e4753852d669.js"
     ],
-    "/upload/page": [
-      "static/chunks/webpack-36b868373b8b36f0.js",
-      "static/chunks/fd9d1056-040859ffb1043b20.js",
-      "static/chunks/472-1632a8f7095a1c04.js",
-      "static/chunks/main-app-a5488d097e248681.js",
-      "static/chunks/app/upload/page-39866ea1bc39e516.js"
-    ],
     "/page": [
       "static/chunks/webpack-36b868373b8b36f0.js",
       "static/chunks/fd9d1056-040859ffb1043b20.js",
@@ -52,6 +45,13 @@
       "static/chunks/main-app-a5488d097e248681.js",
       "static/chunks/122-62ac52ecf62d0edb.js",
       "static/chunks/app/register/page-22ce856a35b68cd7.js"
+    ],
+    "/upload/page": [
+      "static/chunks/webpack-36b868373b8b36f0.js",
+      "static/chunks/fd9d1056-040859ffb1043b20.js",
+      "static/chunks/472-1632a8f7095a1c04.js",
+      "static/chunks/main-app-a5488d097e248681.js",
+      "static/chunks/app/upload/page-39866ea1bc39e516.js"
     ],
     "/watch/[id]/page": [
       "static/chunks/webpack-36b868373b8b36f0.js",

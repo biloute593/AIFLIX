@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getUsersContainer } from '@/lib/azure'
+import { getUsersCollection } from '@/lib/azure'
 import bcrypt from 'bcryptjs'
 import { generateToken } from '@/lib/auth'
 
@@ -12,23 +12,12 @@ export async function POST(request: NextRequest) {
   try {
     const { email, password } = await request.json()
 
-    const usersContainer = getUsersContainer()
-    if (!usersContainer) {
-      return NextResponse.json({ error: 'Database connection failed' }, { status: 500 })
-    }
+    const usersCollection = await getUsersCollection()
 
-    const { resources: users } = await usersContainer.items
-      .query({
-        query: 'SELECT * FROM c WHERE c.email = @email',
-        parameters: [{ name: '@email', value: email }]
-      })
-      .fetchAll()
-
-    if (users.length === 0) {
+    const user = await usersCollection.findOne({ email })
+    if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
-
-    const user = users[0]
 
     // Compare hashed password
     const isValidPassword = await bcrypt.compare(password, user.password)
@@ -38,7 +27,7 @@ export async function POST(request: NextRequest) {
 
     // Generate JWT token
     const token = generateToken({
-      userId: user.id,
+      userId: user._id.toString(),
       email: user.email,
       name: user.name
     })
@@ -47,7 +36,7 @@ export async function POST(request: NextRequest) {
       message: 'Login successful',
       token,
       user: {
-        id: user.id,
+        id: user._id.toString(),
         email: user.email,
         name: user.name
       }
