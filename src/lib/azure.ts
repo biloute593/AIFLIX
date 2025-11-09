@@ -44,6 +44,7 @@ async function getMongoClient(): Promise<MongoClient> {
 async function getDatabase(): Promise<Db> {
   if (!database && process.env.AZURE_COSMOS_DATABASE) {
     const client = await getMongoClient()
+    console.log('Database name:', process.env.AZURE_COSMOS_DATABASE)
     database = client.db(process.env.AZURE_COSMOS_DATABASE)
   }
   if (!database) {
