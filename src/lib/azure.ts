@@ -9,21 +9,13 @@ let _contentsCollection: Collection | null = null
 
 async function getMongoClient(): Promise<MongoClient> {
   if (!mongoClient) {
-    // For Cosmos DB MongoDB API, use the direct MongoDB endpoint
-    const accountKey = process.env.AZURE_COSMOS_KEY
+    // Use the full MongoDB connection string for Cosmos DB
+    const connectionString = process.env.AZURE_COSMOS_CONNECTION_STRING
 
-    if (accountKey) {
-      // Use the direct MongoDB endpoint for Cosmos DB
-      const accountName = 'cosmos4z2ev25jiypag'
-      const encodedKey = encodeURIComponent(accountKey)
+    if (connectionString) {
+      console.log('Using Cosmos DB MongoDB connection string')
 
-      // Direct MongoDB connection string for Cosmos DB
-      const mongoConnectionString = `mongodb://${accountName}:${encodedKey}@${accountName}.mongo.cosmos.azure.com:10255/?ssl=true&replicaSet=globaldb&retrywrites=false&maxIdleTimeMS=120000&appName=@${accountName}@`
-
-      console.log('Using Cosmos DB MongoDB endpoint')
-      console.log('Account name:', accountName)
-
-      mongoClient = new MongoClient(mongoConnectionString, {
+      mongoClient = new MongoClient(connectionString, {
         // Options for Cosmos DB MongoDB API compatibility
         maxPoolSize: 10,
         serverSelectionTimeoutMS: 5000,
@@ -34,7 +26,7 @@ async function getMongoClient(): Promise<MongoClient> {
 
       await mongoClient.connect()
     } else {
-      throw new Error('Missing Cosmos DB key')
+      throw new Error('Missing Cosmos DB connection string')
     }
   }
   if (!mongoClient) {
