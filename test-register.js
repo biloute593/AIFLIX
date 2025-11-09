@@ -3,7 +3,7 @@ const fetch = require('node-fetch');
 async function testRegistration() {
   const userData = {
     name: "BILOUTE",
-    email: "DIMSAKAYA@FREE.FR",
+    username: "BILOUTE",
     password: "DIMOH59!"
   };
 

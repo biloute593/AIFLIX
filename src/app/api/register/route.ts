@@ -10,13 +10,13 @@ export async function POST(request: NextRequest) {
 
   try {
     console.log('Parsing request JSON...')
-    const { name, email, password } = await request.json()
-    console.log('JSON parsed successfully:', { name, email, password: '***' })
+    const { name, username, password } = await request.json()
+    console.log('JSON parsed successfully:', { name, username, password: '***' })
 
     const usersCollection = await getUsersCollection()
 
     // Check if user exists
-    const existingUser = await usersCollection.findOne({ email })
+    const existingUser = await usersCollection.findOne({ username })
     if (existingUser) {
       return NextResponse.json({ error: 'User already exists' }, { status: 400 })
     }
@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     // Create user
     const user = {
       name,
-      email,
+      username,
       password: hashedPassword,
       createdAt: new Date().toISOString()
     }
