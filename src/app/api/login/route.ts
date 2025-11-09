@@ -10,11 +10,11 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { email, password } = await request.json()
+    const { username, password } = await request.json()
 
     const usersCollection = await getUsersCollection()
 
-    const user = await usersCollection.findOne({ email })
+    const user = await usersCollection.findOne({ username })
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     // Generate JWT token
     const token = generateToken({
       userId: user._id.toString(),
-      email: user.email,
+      username: user.username,
       name: user.name
     })
 
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
       token,
       user: {
         id: user._id.toString(),
-        email: user.email,
+        username: user.username,
         name: user.name
       }
     }, { status: 200 })
