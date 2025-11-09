@@ -9,22 +9,19 @@ let _contentsCollection: Collection | null = null
 
 async function getMongoClient(): Promise<MongoClient> {
   if (!mongoClient) {
-    // For Cosmos DB MongoDB API, we need to construct the MongoDB connection string
-    const endpoint = process.env.AZURE_COSMOS_ENDPOINT
+    // For Cosmos DB MongoDB API, use the direct MongoDB endpoint
     const accountKey = process.env.AZURE_COSMOS_KEY
 
-    if (endpoint && accountKey) {
-      // Extract account name from endpoint - remove protocol, domain, port and trailing slash
-      const accountName = endpoint.replace('https://', '').replace('.documents.azure.com', '').replace(/:\d+\/?$/, '').replace(/\/$/, '')
-
-      // URL encode the account key to handle special characters
+    if (accountKey) {
+      // Use the direct MongoDB endpoint for Cosmos DB
+      const accountName = 'cosmos4z2ev25jiypag'
       const encodedKey = encodeURIComponent(accountKey)
 
-      // For Cosmos DB MongoDB API, use the encoded key
-      const mongoConnectionString = `mongodb://${accountName}:${encodedKey}@${accountName}.mongo.cosmos.azure.com:10255/aiflix?ssl=true&replicaSet=globaldb&retrywrites=false&maxIdleTimeMS=120000`
+      // Direct MongoDB connection string for Cosmos DB
+      const mongoConnectionString = `mongodb://${accountName}:${encodedKey}@${accountName}.mongo.cosmos.azure.com:10255/?ssl=true&replicaSet=globaldb&retrywrites=false&maxIdleTimeMS=120000&appName=@${accountName}@`
 
+      console.log('Using Cosmos DB MongoDB endpoint')
       console.log('Account name:', accountName)
-      console.log('Using encoded key for MongoDB API')
 
       mongoClient = new MongoClient(mongoConnectionString, {
         // Options for Cosmos DB MongoDB API compatibility
@@ -37,7 +34,7 @@ async function getMongoClient(): Promise<MongoClient> {
 
       await mongoClient.connect()
     } else {
-      throw new Error('Missing Cosmos DB endpoint or key')
+      throw new Error('Missing Cosmos DB key')
     }
   }
   if (!mongoClient) {
