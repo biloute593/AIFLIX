@@ -42,10 +42,12 @@ async function getMongoClient(): Promise<MongoClient> {
 }
 
 async function getDatabase(): Promise<Db> {
-  if (!database && process.env.AZURE_COSMOS_DATABASE) {
+  if (!database) {
     const client = await getMongoClient()
-    console.log('Database name:', process.env.AZURE_COSMOS_DATABASE)
-    database = client.db(process.env.AZURE_COSMOS_DATABASE)
+    // Hardcode database name to avoid encoding issues
+    const dbName = 'aiflix'
+    console.log('Using hardcoded database name:', dbName)
+    database = client.db(dbName)
   }
   if (!database) {
     throw new Error('Failed to get database')
