@@ -61,7 +61,15 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ message: 'Content uploaded successfully', contentId: result.insertedId }, { status: 201 })
   } catch (error) {
-    console.error('Upload error:', error)
+    // Log full stack for debugging
+    console.error('Upload error:', (error as any)?.stack || error)
+
+    // If DEBUG_UPLOAD is set, return error details in response to aid debugging (not for production)
+    if (process.env.DEBUG_UPLOAD === 'true') {
+      const msg = (error as any)?.message || String(error)
+      return NextResponse.json({ error: 'Internal server error', details: msg }, { status: 500 })
+    }
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
