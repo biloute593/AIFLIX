@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 
 interface User {
   id: string
-  email: string
+  username: string
   name: string
 }
 
@@ -12,8 +12,8 @@ interface AuthContextType {
   user: User | null
   token: string | null
   loading: boolean
-  login: (email: string, password: string) => Promise<boolean>
-  register: (name: string, email: string, password: string) => Promise<boolean>
+  login: (username: string, password: string) => Promise<boolean>
+  register: (name: string, username: string, password: string) => Promise<boolean>
   logout: () => void
   getAuthHeaders: () => Record<string, string>
 }
@@ -53,17 +53,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setLoading(false)
   }, [])
 
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login = async (username: string, password: string): Promise<boolean> => {
     try {
       const response = await fetch('/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ username, password }),
       })
 
       if (response.ok) {
         const data = await response.json()
-        const userData = { id: data.user.id, email: data.user.email, name: data.user.name }
+        const userData = { id: data.user.id, username: data.user.username, name: data.user.name }
         setUser(userData)
         setToken(data.token)
         localStorage.setItem('aiflix-user', JSON.stringify(userData))
@@ -77,12 +77,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }
 
-  const register = async (name: string, email: string, password: string): Promise<boolean> => {
+  const register = async (name: string, username: string, password: string): Promise<boolean> => {
     try {
       const response = await fetch('/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password }),
+        body: JSON.stringify({ name, username, password }),
       })
 
       if (response.ok) {

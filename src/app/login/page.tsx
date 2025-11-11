@@ -2,30 +2,21 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useAuth } from '@/contexts/AuthContext'
 
 export default function Login() {
-  const [email, setEmail] = useState('')
+  const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const { login } = useAuth()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      const response = await fetch('/api/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        // Store session (simplified)
-        localStorage.setItem('session', JSON.stringify(data.session))
+      const ok = await login(username, password)
+      if (ok) {
         window.location.href = '/browse'
       } else {
-        const data = await response.json()
-        alert(data.error || 'Erreur lors de la connexion')
+        alert('Email ou mot de passe invalide')
       }
     } catch (error) {
       console.error('Login error:', error)
@@ -39,12 +30,12 @@ export default function Login() {
         <h1 className="text-2xl font-bold mb-6 text-center">Connexion</h1>
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
-            <label htmlFor="email" className="block mb-2">Email</label>
+            <label htmlFor="username" className="block mb-2">Nom d'utilisateur</label>
             <input
-              type="email"
-              id="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              type="text"
+              id="username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
               className="w-full p-2 rounded bg-gray-700 text-white"
               required
             />

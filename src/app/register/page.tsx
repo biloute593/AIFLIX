@@ -2,29 +2,23 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useAuth } from '@/contexts/AuthContext'
 
 export default function Register() {
   const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
+  const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const { register } = useAuth()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      const response = await fetch('/api/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ name, email, password }),
-      })
-
-      if (response.ok) {
+      const ok = await register(name, username, password)
+      if (ok) {
         // Redirect to login
         window.location.href = '/login'
       } else {
-        const data = await response.json()
-        alert(data.error || 'Erreur lors de l\'inscription')
+        alert('Erreur lors de l\'inscription')
       }
     } catch (error) {
       console.error('Registration error:', error)
@@ -49,12 +43,12 @@ export default function Register() {
             />
           </div>
           <div className="mb-4">
-            <label htmlFor="email" className="block mb-2">Email</label>
+            <label htmlFor="username" className="block mb-2">Nom d'utilisateur</label>
             <input
-              type="email"
-              id="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              type="text"
+              id="username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
               className="w-full p-2 rounded bg-gray-700 text-white"
               required
             />
