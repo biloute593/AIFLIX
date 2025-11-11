@@ -30,6 +30,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Storage connection failed' }, { status: 500 })
     }
 
+    // Ensure container exists (create if missing) - helps avoid upload errors when container not created
+    try {
+      if (typeof containerClient.createIfNotExists === 'function') {
+        await containerClient.createIfNotExists()
+      }
+    } catch (err) {
+      console.error('Container ensure error:', (err as any)?.stack || err)
+      return NextResponse.json({ error: 'Storage connection failed' }, { status: 500 })
+    }
+
     // Upload to Azure Blob Storage
     const blobName = `${Date.now()}-${file.name}`
     const blockBlobClient = containerClient.getBlockBlobClient(blobName)
