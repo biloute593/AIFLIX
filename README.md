@@ -273,6 +273,12 @@ Pour toute question ou problème :
 2. Consultez les logs d'erreur dans la console
 3. Ouvrez une issue sur GitHub
 
+### 📫 Contact professionnel
+
+Pour tout contact professionnel, partenariat ou demande commerciale, vous pouvez envoyer un e‑mail à :
+
+contact@ai-market.dev
+
 ---
 
 **Note** : Cette application est conçue pour des contenus générés par IA. Assurez-vous de respecter les droits d'auteur et les conditions d'utilisation des plateformes d'IA utilisées pour générer le contenu.
