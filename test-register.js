@@ -1,17 +1,18 @@
 const fetch = require('node-fetch');
 
 async function testRegistration() {
+  const timestamp = Date.now().toString().slice(-6)
   const userData = {
-    name: "BILOUTE",
-    username: "BILOUTE",
-    password: "DIMOH59!"
+    name: `AUTOTEST_${timestamp}`,
+    username: `AUTOTEST_${timestamp}`,
+    password: `AutoPass1!`
   };
 
   try {
     console.log('🧪 Test d\'inscription AIFLIX...');
     console.log('📤 Données:', userData);
 
-    const response = await fetch('https://aiflix-7faz7hhry-biloutes-593.vercel.app/api/register', {
+    const response = await fetch('https://aiflix-o1grm7q3g-biloutes-593.vercel.app/api/register', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

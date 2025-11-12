@@ -55,18 +55,34 @@ export async function POST(request: NextRequest) {
 
     const containerClient = getContainerClient()
     if (!containerClient) {
-      // allow DB-only fallback (container missing) - we'll handle below
       console.warn('No container client available, will attempt DB fallback')
+      // Log env variables for debugging (without sensitive values)
+      if (process.env.DEBUG_UPLOAD === 'true') {
+        console.log('Storage debug info:', {
+          hasAccountName: !!process.env.AZURE_STORAGE_ACCOUNT_NAME,
+          hasAccountKey: !!(process.env.AZURE_STORAGE_ACCOUNT_KEY || process.env.AZURE_STORAGE_ACCESS_KEY),
+          hasConnectionString: !!process.env.AZURE_STORAGE_CONNECTION_STRING,
+          hasContainer: !!(process.env.AZURE_STORAGE_CONTAINER || process.env.AZURE_STORAGE_CONTAINER_NAME)
+        })
+      }
     }
 
     // Ensure container exists (create if missing) - helps avoid upload errors when container not created
     try {
-      if (typeof containerClient.createIfNotExists === 'function') {
+      if (containerClient && typeof containerClient.createIfNotExists === 'function') {
+        console.log('Attempting to ensure container exists...')
         await containerClient.createIfNotExists()
+        console.log('Container check completed successfully')
+      } else if (containerClient) {
+        console.log('Container client available but createIfNotExists method not found')
       }
     } catch (err) {
-      console.error('Container ensure error:', (err as any)?.stack || err)
-      return NextResponse.json({ error: 'Storage connection failed' }, { status: 500 })
+      const errorMsg = (err as any)?.message || String(err)
+      console.error('Container ensure error:', errorMsg)
+      console.error('Full error:', (err as any)?.stack || err)
+      
+      // Continue with DB fallback instead of failing
+      console.warn('Container verification failed, will use DB fallback for small files')
     }
 
     // Upload to Azure Blob Storage (primary path) with DB fallback for small files
@@ -76,6 +92,8 @@ export async function POST(request: NextRequest) {
 
     let videoUrl: string | null = null
     let attemptedBlob = false
+    
+    // Use blob storage now that we have proper configuration
     if (containerClient) {
       try {
         const blobName = `${Date.now()}-${fileName}`

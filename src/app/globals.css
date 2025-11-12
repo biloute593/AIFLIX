@@ -4,11 +4,19 @@
 
 /* Modern CSS fixes for mobile rendering */
 * {
+  -webkit-text-size-adjust: none;
+  -moz-text-size-adjust: none;
+  -ms-text-size-adjust: none;
   text-size-adjust: none;
 }
 
 /* Reset form elements for consistent appearance */
 input, textarea, select, button {
+  -webkit-appearance: none;
+  -moz-appearance: none;
   appearance: none;
+  -webkit-text-size-adjust: none;
+  -moz-text-size-adjust: none;
+  -ms-text-size-adjust: none;
   text-size-adjust: none;
 }

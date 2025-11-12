@@ -76,16 +76,39 @@ let blobServiceClient: any = null
 let _containerClient: any = null
 
 function getBlobServiceClient() {
-  if (!blobServiceClient && process.env.AZURE_STORAGE_ACCOUNT_NAME && process.env.AZURE_STORAGE_ACCOUNT_KEY) {
-    const connectionString = `DefaultEndpointsProtocol=https;AccountName=${process.env.AZURE_STORAGE_ACCOUNT_NAME};AccountKey=${process.env.AZURE_STORAGE_ACCOUNT_KEY};EndpointSuffix=core.windows.net`
-    blobServiceClient = BlobServiceClient.fromConnectionString(connectionString)
+  // Try multiple possible environment variable names for storage key
+  const accountName = process.env.AZURE_STORAGE_ACCOUNT_NAME_FINAL || process.env.AZURE_STORAGE_ACCOUNT_NAME
+  const accountKey = process.env.AZURE_STORAGE_ACCOUNT_KEY_FINAL || process.env.AZURE_STORAGE_ACCOUNT_KEY || process.env.AZURE_STORAGE_ACCESS_KEY
+  const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING_FINAL || process.env.AZURE_STORAGE_CONNECTION_STRING
+
+  if (!blobServiceClient) {
+    if (connectionString) {
+      // Use connection string if available (preferred)
+      console.log('Using Azure Storage connection string (FINAL config)')
+      blobServiceClient = BlobServiceClient.fromConnectionString(connectionString)
+    } else if (accountName && accountKey) {
+      // Fallback to account name + key
+      console.log('Using Azure Storage account name + key (FINAL config)')
+      const connStr = `DefaultEndpointsProtocol=https;AccountName=${accountName};AccountKey=${accountKey};EndpointSuffix=core.windows.net`
+      blobServiceClient = BlobServiceClient.fromConnectionString(connStr)
+    } else {
+      console.warn('Azure Storage not configured - missing connection string or account credentials')
+    }
   }
   return blobServiceClient
 }
 
 export function getContainerClient() {
-  if (!_containerClient && getBlobServiceClient() && process.env.AZURE_STORAGE_CONTAINER) {
-    _containerClient = getBlobServiceClient().getContainerClient(process.env.AZURE_STORAGE_CONTAINER)
+  const blobClient = getBlobServiceClient()
+  const containerName = process.env.AZURE_STORAGE_CONTAINER_FINAL || process.env.AZURE_STORAGE_CONTAINER || process.env.AZURE_STORAGE_CONTAINER_NAME
+  
+  if (!_containerClient && blobClient && containerName) {
+    console.log('Creating container client for:', containerName, '(FINAL config)')
+    _containerClient = blobClient.getContainerClient(containerName)
+  } else if (!blobClient) {
+    console.warn('No blob service client available')
+  } else if (!containerName) {
+    console.warn('No container name configured')
   }
   return _containerClient
 }
