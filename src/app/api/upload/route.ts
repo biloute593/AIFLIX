@@ -47,11 +47,21 @@ export async function POST(request: NextRequest) {
     const arrayBuffer = await file.arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)
 
-    await blockBlobClient.upload(buffer, buffer.length, {
-      blobHTTPHeaders: {
-        blobContentType: file.type,
-      },
-    })
+    // Use uploadData which works with Uint8Array/Buffer and is simpler in server environments
+    if (typeof blockBlobClient.uploadData === 'function') {
+      await blockBlobClient.uploadData(buffer, {
+        blobHTTPHeaders: {
+          blobContentType: file.type,
+        },
+      })
+    } else {
+      // Fallback to upload (older API)
+      await blockBlobClient.upload(buffer, buffer.length, {
+        blobHTTPHeaders: {
+          blobContentType: file.type,
+        },
+      })
+    }
 
     const videoUrl = blockBlobClient.url
 
