@@ -40,30 +40,47 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Storage connection failed' }, { status: 500 })
     }
 
-    // Upload to Azure Blob Storage
-    const blobName = `${Date.now()}-${file.name}`
-    const blockBlobClient = containerClient.getBlockBlobClient(blobName)
-
+    // Upload to Azure Blob Storage (primary path) with DB fallback for small files
     const arrayBuffer = await file.arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)
 
-    // Use uploadData which works with Uint8Array/Buffer and is simpler in server environments
-    if (typeof blockBlobClient.uploadData === 'function') {
-      await blockBlobClient.uploadData(buffer, {
-        blobHTTPHeaders: {
-          blobContentType: file.type,
-        },
-      })
-    } else {
-      // Fallback to upload (older API)
-      await blockBlobClient.upload(buffer, buffer.length, {
-        blobHTTPHeaders: {
-          blobContentType: file.type,
-        },
-      })
-    }
+    let videoUrl: string | null = null
+    try {
+      const blobName = `${Date.now()}-${file.name}`
+      const blockBlobClient = containerClient.getBlockBlobClient(blobName)
 
-    const videoUrl = blockBlobClient.url
+      // Use uploadData when available for server compatibility
+      if (typeof blockBlobClient.uploadData === 'function') {
+        await blockBlobClient.uploadData(buffer, {
+          blobHTTPHeaders: {
+            blobContentType: file.type,
+          },
+        })
+      } else {
+        // Fallback to upload (older API)
+        await blockBlobClient.upload(buffer, buffer.length, {
+          blobHTTPHeaders: {
+            blobContentType: file.type,
+          },
+        })
+      }
+
+      videoUrl = blockBlobClient.url
+    } catch (uploadErr) {
+      console.error('Blob upload failed:', (uploadErr as any)?.stack || uploadErr)
+
+      // Fallback: if storage is not configured or upload fails, store small files in DB as data URI
+      const MAX_DB_STORE_BYTES = 5 * 1024 * 1024 // 5 MB
+      if (buffer.length <= MAX_DB_STORE_BYTES) {
+        const b64 = buffer.toString('base64')
+        videoUrl = `data:${file.type};base64,${b64}`
+        console.warn('Using DB fallback storage for uploaded file (data URI)')
+      } else {
+        // File too large to fallback to DB
+        console.error('Uploaded file too large for DB fallback:', buffer.length)
+        return NextResponse.json({ error: 'Storage unavailable and file too large for fallback' }, { status: 507 })
+      }
+    }
 
     const contentsCollection = await getContentsCollection()
 
