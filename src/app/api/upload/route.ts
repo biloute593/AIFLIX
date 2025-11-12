@@ -15,19 +15,48 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const formData = await request.formData()
-    const title = formData.get('title') as string
-    const description = formData.get('description') as string
-    const type = formData.get('type') as string
-    const file = formData.get('file') as File
+    // Support two upload payloads:
+    // 1) multipart/form-data with file (browser form)
+    // 2) application/json with { title, description, type, fileName, fileType, fileBase64 }
+    let title: string | null = null
+    let description: string | null = null
+    let type: string | null = null
+    let fileName: string | null = null
+    let fileType: string | null = null
+    let buffer: Buffer | null = null
 
-    if (!file) {
-      return NextResponse.json({ error: 'No file provided' }, { status: 400 })
+    const contentType = request.headers.get('content-type') || ''
+    if (contentType.includes('application/json')) {
+      const body = await request.json()
+      title = body.title || null
+      description = body.description || null
+      type = body.type || null
+      fileName = body.fileName || body.file_name || 'upload.bin'
+      fileType = body.fileType || body.file_type || 'application/octet-stream'
+      if (!body.fileBase64) {
+        return NextResponse.json({ error: 'No fileBase64 provided' }, { status: 400 })
+      }
+      buffer = Buffer.from(body.fileBase64, 'base64')
+    } else {
+      const formData = await request.formData()
+      title = (formData.get('title') as string) || null
+      description = (formData.get('description') as string) || null
+      type = (formData.get('type') as string) || null
+      const file = formData.get('file') as File
+      if (!file) {
+        return NextResponse.json({ error: 'No file provided' }, { status: 400 })
+      }
+
+      fileName = file.name
+      fileType = file.type || 'application/octet-stream'
+      const arrayBuffer = await file.arrayBuffer()
+      buffer = Buffer.from(arrayBuffer)
     }
 
     const containerClient = getContainerClient()
     if (!containerClient) {
-      return NextResponse.json({ error: 'Storage connection failed' }, { status: 500 })
+      // allow DB-only fallback (container missing) - we'll handle below
+      console.warn('No container client available, will attempt DB fallback')
     }
 
     // Ensure container exists (create if missing) - helps avoid upload errors when container not created
@@ -41,44 +70,54 @@ export async function POST(request: NextRequest) {
     }
 
     // Upload to Azure Blob Storage (primary path) with DB fallback for small files
-    const arrayBuffer = await file.arrayBuffer()
-    const buffer = Buffer.from(arrayBuffer)
+    if (!buffer) {
+      return NextResponse.json({ error: 'No file buffer' }, { status: 400 })
+    }
 
     let videoUrl: string | null = null
-    try {
-      const blobName = `${Date.now()}-${file.name}`
-      const blockBlobClient = containerClient.getBlockBlobClient(blobName)
+    let attemptedBlob = false
+    if (containerClient) {
+      try {
+        const blobName = `${Date.now()}-${fileName}`
+        const blockBlobClient = containerClient.getBlockBlobClient(blobName)
+        attemptedBlob = true
 
-      // Use uploadData when available for server compatibility
-      if (typeof blockBlobClient.uploadData === 'function') {
-        await blockBlobClient.uploadData(buffer, {
-          blobHTTPHeaders: {
-            blobContentType: file.type,
-          },
-        })
-      } else {
-        // Fallback to upload (older API)
-        await blockBlobClient.upload(buffer, buffer.length, {
-          blobHTTPHeaders: {
-            blobContentType: file.type,
-          },
-        })
+        // Use uploadData when available for server compatibility
+        if (typeof blockBlobClient.uploadData === 'function') {
+          await blockBlobClient.uploadData(buffer, {
+            blobHTTPHeaders: {
+              blobContentType: fileType,
+            },
+          })
+        } else {
+          // Fallback to upload (older API)
+          await blockBlobClient.upload(buffer, buffer.length, {
+            blobHTTPHeaders: {
+              blobContentType: fileType,
+            },
+          })
+        }
+
+        videoUrl = blockBlobClient.url
+      } catch (uploadErr) {
+        console.error('Blob upload failed:', (uploadErr as any)?.stack || uploadErr)
       }
+    }
 
-      videoUrl = blockBlobClient.url
-    } catch (uploadErr) {
-      console.error('Blob upload failed:', (uploadErr as any)?.stack || uploadErr)
-
-      // Fallback: if storage is not configured or upload fails, store small files in DB as data URI
+    // If blob upload wasn't possible or failed, fallback to DB for small files
+    if (!videoUrl) {
       const MAX_DB_STORE_BYTES = 5 * 1024 * 1024 // 5 MB
       if (buffer.length <= MAX_DB_STORE_BYTES) {
         const b64 = buffer.toString('base64')
-        videoUrl = `data:${file.type};base64,${b64}`
+        videoUrl = `data:${fileType};base64,${b64}`
         console.warn('Using DB fallback storage for uploaded file (data URI)')
       } else {
-        // File too large to fallback to DB
-        console.error('Uploaded file too large for DB fallback:', buffer.length)
-        return NextResponse.json({ error: 'Storage unavailable and file too large for fallback' }, { status: 507 })
+        if (!attemptedBlob) {
+          console.error('Storage container not configured and file too large for fallback:', buffer.length)
+          return NextResponse.json({ error: 'Storage unavailable and file too large for fallback' }, { status: 507 })
+        }
+        console.error('Blob upload failed and file too large for DB fallback:', buffer.length)
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
       }
     }
 
