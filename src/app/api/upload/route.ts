@@ -84,10 +84,16 @@ export async function POST(request: NextRequest) {
     // Log full stack for debugging
     console.error('Upload error:', (error as any)?.stack || error)
 
-    // If DEBUG_UPLOAD is set, return error details in response to aid debugging (not for production)
-    if (process.env.DEBUG_UPLOAD === 'true') {
-      const msg = (error as any)?.message || String(error)
-      return NextResponse.json({ error: 'Internal server error', details: msg }, { status: 500 })
+    // If DEBUG_UPLOAD env var is set OR request includes X-Debug: true header, return error details in response to aid debugging (temporary)
+    try {
+      const shouldDebug = process.env.DEBUG_UPLOAD === 'true' || request.headers.get('x-debug') === 'true'
+      if (shouldDebug) {
+        const msg = (error as any)?.message || String(error)
+        const stack = (error as any)?.stack || null
+        return NextResponse.json({ error: 'Internal server error', details: msg, stack }, { status: 500 })
+      }
+    } catch (hdrErr) {
+      // ignore header read errors
     }
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
