@@ -14,12 +14,12 @@ async function getMongoClient(): Promise<MongoClient> {
 
     if (accountKey) {
       // Use the direct MongoDB endpoint for Cosmos DB
-      const accountName = 'cosmos4z2ev25jiypag'
+      const accountName = 'cosmos-aiflix-eastus'
 
       // Direct MongoDB connection string for Cosmos DB
       const mongoConnectionString = `mongodb://${accountName}:${accountKey}@${accountName}.mongo.cosmos.azure.com:10255/?ssl=true&replicaSet=globaldb&retrywrites=false&maxIdleTimeMS=120000&appName=@${accountName}@`
 
-      console.log('Using Cosmos DB MongoDB endpoint with dedicated key')
+      console.log('Using Cosmos DB MongoDB endpoint with dedicated key (East US)')
 
       mongoClient = new MongoClient(mongoConnectionString, {
         // Options for Cosmos DB MongoDB API compatibility
