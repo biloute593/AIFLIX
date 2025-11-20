@@ -1,7 +1,7 @@
 # Script de diagnostic complet pour les uploads AIFLIX
 # Usage: powershell -ExecutionPolicy Bypass -File .\scripts\debug_upload.ps1
 
-$base = 'https://aiflix-e64r9c7i9-biloutes-593.vercel.app'
+$base = 'https://aiflix-d7fvy7d8t-biloutes-593.vercel.app'
 
 Write-Host "=== DIAGNOSTIC UPLOAD AIFLIX ===" -ForegroundColor Yellow
 Write-Host "Base URL: $base"
